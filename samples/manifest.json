@@ -1,0 +1,100 @@
+{
+  "fictional": true,
+  "notice": "模拟材料，仅用于产品测试。所有主体、交易及记录均为虚构。",
+  "matters": [
+    {
+      "key": "purchase",
+      "name": "设备买卖款项核对",
+      "description": "围绕交付、两笔付款及质量争议，核对材料中不同的金额。",
+      "files": [
+        {
+          "id": "A01",
+          "name": "A01_设备买卖合同.pdf",
+          "format": "pdf"
+        },
+        {
+          "id": "A02",
+          "name": "A02_采购确认单.docx",
+          "format": "docx"
+        },
+        {
+          "id": "A03",
+          "name": "A03_送货签收单.pdf",
+          "format": "scan"
+        },
+        {
+          "id": "A04",
+          "name": "A04_质量问题沟通记录.pdf",
+          "format": "pdf"
+        },
+        {
+          "id": "A05",
+          "name": "A05_阶段对账单.docx",
+          "format": "docx"
+        },
+        {
+          "id": "A06",
+          "name": "A06_两笔付款回单汇总.pdf",
+          "format": "pdf"
+        },
+        {
+          "id": "A07",
+          "name": "A07_催款函.pdf",
+          "format": "pdf"
+        },
+        {
+          "id": "A08",
+          "name": "A08_电话沟通纪要.docx",
+          "format": "docx"
+        }
+      ]
+    },
+    {
+      "key": "employment",
+      "name": "离职工资与交接核对",
+      "description": "分清工资标准、实际到账和离职相关日期，保留待核实的信息。",
+      "files": [
+        {
+          "id": "B01",
+          "name": "B01_劳动合同.pdf",
+          "format": "pdf"
+        },
+        {
+          "id": "B02",
+          "name": "B02_录用通知.docx",
+          "format": "docx"
+        },
+        {
+          "id": "B03",
+          "name": "B03_月度考勤表.pdf",
+          "format": "pdf"
+        },
+        {
+          "id": "B04",
+          "name": "B04_工资明细表.pdf",
+          "format": "pdf"
+        },
+        {
+          "id": "B05",
+          "name": "B05_工资到账记录.pdf",
+          "format": "pdf"
+        },
+        {
+          "id": "B06",
+          "name": "B06_离职通知.docx",
+          "format": "docx"
+        },
+        {
+          "id": "B07",
+          "name": "B07_人事及主管沟通记录.pdf",
+          "format": "pdf"
+        },
+        {
+          "id": "B08",
+          "name": "B08_工作交接确认单.pdf",
+          "format": "scan"
+        }
+      ]
+    }
+  ]
+}

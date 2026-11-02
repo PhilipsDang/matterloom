@@ -1,0 +1,23 @@
+{
+  "scope": "人工编写的模拟材料参考要点；不应作为事项文件上传或进入检索",
+  "purchase": {
+    "contract_total": {"value": 100000, "source": "A01", "page": 1},
+    "payments": [{"value": 40000, "source": "A06", "page": 1}, {"value": 20000, "source": "A06", "page": 2}],
+    "arithmetic_difference_before_disputed_adjustment": 40000,
+    "old_statement_balance": {"value": 60000, "source": "A05", "locator": "表格 1 第 4 行第 2 列"},
+    "buyer_requested_adjustment": {"value": 10000, "sources": ["A04", "A08"], "accepted": null},
+    "missing": ["双方接受减价的记录", "实际退货凭证"],
+    "must_not_infer": ["双方已同意减价", "最终法律责任已经确定"]
+  },
+  "employment": {
+    "salary_standard": {"value": 8000, "source": "B01", "page": 1},
+    "gross_pay": {"value": 7600, "source": "B04", "page": 1},
+    "deduction": {"value": 700, "source": "B04", "page": 1},
+    "received": {"value": 6900, "source": "B05", "page": 1},
+    "proposed_departure": {"value": "2026-10-15", "source": "B06"},
+    "actual_handover": {"value": "2026-10-18", "source": "B08", "page": 1},
+    "employment_end_date": null,
+    "missing": ["最终考勤修订", "工资具体核算与扣减明细", "双方确认的终止日期"],
+    "must_not_infer": ["交接日必然是劳动关系终止日", "到账匹配即说明工资核算完全正确"]
+  }
+}

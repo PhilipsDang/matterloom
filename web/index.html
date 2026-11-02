@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MatterLoom 律脉 · 事项材料</title>
+  <link rel="icon" type="image/svg+xml" href="/mark.svg"><link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <aside class="sidebar">
+    <a class="brand" href="/" aria-label="MatterLoom 首页"><img src="/mark.svg" alt=""><span>MatterLoom<small>律 脉</small></span></a>
+    <p class="brand-note">循事实之脉，汇法律之知。</p>
+    <button class="primary new-matter" id="new-matter">＋ 新建事项</button>
+    <div class="section-label">我的事项 <span id="matter-count">0</span></div>
+    <nav id="matter-list" aria-label="事项列表"></nav>
+    <div class="sidebar-bottom"><span class="local-dot"></span> 本机工作空间 <span class="version">0.1</span><p>材料与解析内容保存在本机。</p><button class="subtle" id="samples-button">查看模拟案卷 <span>↗</span></button></div>
+  </aside>
+  <main>
+    <header class="topbar"><span>个人知识库 <b>/</b> <span id="breadcrumb">事项材料</span></span><span class="phase">第一阶段 · 材料整理</span></header>
+    <section class="page-heading"><div><p class="eyebrow">MATTER WORKSPACE</p><h1 id="matter-title">从一份材料，开始理清脉络。</h1><p id="matter-description">创建事项，汇集文件，让每一处原文都有迹可循。</p></div><span class="outline-label">本地原型</span></section>
+    <section id="welcome" class="welcome">
+      <div class="welcome-art" aria-hidden="true"><span></span><span></span><span></span><i></i></div>
+      <p class="eyebrow">YOUR FIRST MATTER</p><h2>把分散材料，放进同一事项。</h2><p>上传 PDF 或 Word 文件，查看解析状态，<br>在原文与提取文字之间逐页核对。</p>
+      <button class="primary" id="welcome-new">创建第一个事项 <span>→</span></button>
+      <button class="text-button" id="welcome-samples">或先体验两组模拟案卷</button>
+      <div class="welcome-features"><span>01　多文件上传</span><span>02　原文定位</span><span>03　本机保存</span></div>
+    </section>
+    <section id="workspace" hidden>
+      <div class="metrics"><div><span>事项材料</span><strong id="stat-docs">0<small>份</small></strong></div><div><span>已解析完成</span><strong id="stat-ready">0<small>份</small></strong></div><div><span>需要留意</span><strong id="stat-review">0<small>份</small></strong></div><div><span>PDF 原文页数</span><strong id="stat-pages">0<small>页</small></strong></div></div>
+      <div class="workspace-toolbar"><div class="active-tab">事项材料 <span id="tab-count">0</span></div><label class="ocr-switch"><input type="checkbox" id="use-ocr" checked> 识别扫描件 <span id="ocr-status"></span></label></div>
+      <div class="upload-zone" id="upload-zone"><input type="file" id="file-input" accept=".pdf,.docx" multiple hidden><div class="upload-symbol">↑</div><div><strong>拖入文件，或 <button id="choose-files" class="inline-button">选择文件</button></strong><p>PDF / DOCX · 每份不超过 20 MB · PDF 最多 100 页</p></div><span class="upload-end">支持多份文件</span></div>
+      <div id="progress-panel" class="progress-panel" hidden><div><span id="progress-message"></span><span id="progress-count"></span></div><progress id="upload-progress" max="1" value="0"></progress></div>
+      <div id="notice" class="notice" role="status" hidden></div>
+      <div class="document-layout">
+        <section class="file-panel"><div class="panel-heading"><h2>文件目录</h2><span id="file-count"></span></div><div class="search-wrap"><span>⌕</span><input id="file-search" placeholder="按文件名查找" aria-label="按文件名查找"></div><div id="file-list"></div><p class="list-footnote">选择文件，查看原文与提取结果。</p></section>
+        <section class="reader-panel" aria-label="原文与解析内容"><div id="reader-empty" class="reader-empty"><div class="empty-icon">▤</div><h3>原文，是每一次查证的起点。</h3><p>上传或选择一份材料，在这里开始核对。</p></div><div id="reader" hidden>
+          <div class="reader-heading"><div><span id="reader-kind" class="eyebrow"></span><h2 id="reader-title"></h2></div><a id="download-original" class="small-button">下载原件 ↓</a></div>
+          <div id="reader-warning" class="reader-warning" hidden></div>
+          <div class="reader-toolbar"><div class="segmented"><button id="view-original" class="selected">原文</button><button id="view-text">提取文字</button></div><div id="page-controls" class="page-controls"><button id="page-prev" aria-label="上一页">‹</button><select id="page-select" aria-label="文件页码"></select><span id="page-total"></span><button id="page-next" aria-label="下一页">›</button></div></div>
+          <div id="page-note" class="page-note"></div><div id="page-view" class="page-view"><img id="page-image" alt="PDF 原文页面"></div><div id="text-view" class="text-view" hidden></div>
+          <div class="reader-footer"><span id="source-method"></span><button class="text-button" id="reparse">重新解析 ↻</button></div>
+        </div></section>
+      </div>
+    </section>
+    <footer class="page-footer"><span>MatterLoom / 律脉</span><span>让事实有据可循，让专业在积累中生长。</span></footer>
+  </main>
+  <dialog id="matter-dialog"><form id="matter-form"><p class="eyebrow">NEW MATTER</p><h2>新建事项</h2><p class="dialog-intro">将同一事项的材料集中保存，方便后续查证。</p><label>事项名称<input name="name" required maxlength="100" placeholder="例如：设备买卖款项核对" autofocus></label><label>事项说明 <span class="muted">选填</span><textarea name="description" maxlength="1000" rows="3" placeholder="简要记录事项背景"></textarea></label><p id="form-error" class="error" role="alert"></p><div class="dialog-actions"><button type="button" id="cancel-matter" class="small-button">取消</button><button type="submit" class="primary">创建事项</button></div></form></dialog>
+  <dialog id="samples-dialog"><p class="eyebrow">SAMPLE COLLECTION</p><h2>用模拟案卷，走完第一步。</h2><p class="dialog-intro">两组事项 · 16 份材料 · 全部为虚构测试内容。</p><div id="sample-cards"></div><div class="dialog-actions"><button class="small-button" id="close-samples">关闭</button></div></dialog>
+  <div id="toast" class="toast" role="status" hidden></div>
+</body></html>

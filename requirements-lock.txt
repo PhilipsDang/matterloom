@@ -1,0 +1,6 @@
+# Versions used for the checked local prototype. Install with Python 3.12.
+pypdf==6.10.0
+pypdfium2==5.14.0
+python-docx==1.2.0
+Pillow==12.3.0
+reportlab==4.4.9
