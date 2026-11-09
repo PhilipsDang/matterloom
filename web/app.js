@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const state = {matters: [], matter: null, documents: [], doc: null, units: [], page: 1, view: 'original', busy: false, loadId: 0};
+const state = {matters: [], matter: null, documents: [], doc: null, units: [], page: 1, view: 'original', busy: false, loadId: 0, matterLoadId: 0, citation: null, workspace: 'materials'};
 const labels = {ready: '● 已解析', partial: '◐ 待核对', failed: '● 解析失败', pending: '○ 待解析', parsing: '◌ 解析中'};
 const escapeHTML = (value) => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const prettySize = n => n < 1024 * 1024 ? `${Math.max(1, Math.round(n / 1024))} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`;
@@ -13,7 +13,7 @@ async function api(path, options = {}) {
 const post = (url, data) => api(url, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)});
 function toast(message) { $('toast').textContent = message; $('toast').hidden = false; clearTimeout(toast.timer); toast.timer = setTimeout(() => $('toast').hidden = true, 5000); }
 function notice(message, success = false) { $('notice').textContent = message; $('notice').className = `notice${success ? ' success' : ''}`; $('notice').hidden = !message; }
-function busy(value) { state.busy = value; document.body.classList.toggle('busy', value); ['choose-files','reparse','use-ocr','new-matter','samples-button'].forEach(id => $(id).disabled = value); $('file-input').disabled = value; }
+function busy(value) { state.busy = value; document.body.classList.toggle('busy', value); ['choose-files','reparse','use-ocr','new-matter','samples-button','extract-all','add-fact','extraction-mode','external-consent'].forEach(id => $(id).disabled = value); $('file-input').disabled = value; }
 function docUrl(suffix = '') { return `/api/matters/${state.matter.id}/documents/${state.doc.id}${suffix}`; }
 
 async function refreshMatters() {
@@ -26,9 +26,12 @@ async function refreshMatters() {
 }
 
 async function selectMatter(id) {
+  const matterLoadId = ++state.matterLoadId;
   state.loadId++;
   const data = await api(`/api/matters/${id}/documents`);
+  if (matterLoadId !== state.matterLoadId) return;
   state.matter = data.matter; state.documents = data.documents; state.doc = null; state.units = [];
+  state.citation = null; $('external-consent').checked = false;
   localStorage.setItem('matterloom-last-matter', id);
   $('welcome').hidden = true; $('workspace').hidden = false;
   $('matter-title').textContent = state.matter.name;
@@ -36,7 +39,11 @@ async function selectMatter(id) {
   $('breadcrumb').textContent = '事项材料';
   $('file-search').value = ''; notice('');
   renderFiles(); showEmptyReader(); await refreshMatters();
+  if (matterLoadId !== state.matterLoadId) return;
+  await refreshFacts();
+  if (matterLoadId !== state.matterLoadId) return;
   if (state.documents.length) await selectDocument(state.documents[0].id);
+  setWorkspace(state.workspace);
 }
 async function refreshDocuments() {
   if (!state.matter) return;
@@ -61,6 +68,7 @@ async function selectDocument(id) {
   const data = await api(`/api/matters/${state.matter.id}/documents/${id}/units`);
   if (loadId !== state.loadId) return;
   state.doc = data.document; state.units = data.units; state.page = 1;
+  state.citation = null;
   state.view = state.doc.kind === 'pdf' ? 'original' : 'text';
   $('reader-empty').hidden = true; $('reader').hidden = false;
   $('reader-title').textContent = state.doc.name;
@@ -77,6 +85,8 @@ function renderReader() {
   if (!state.doc) return;
   const pdf = state.doc.kind === 'pdf';
   const unit = state.units.find(u => u.page_number === state.page);
+  $('active-citation').hidden = !state.citation;
+  if (state.citation) $('active-citation').textContent = `${state.citation.locator} · ${state.citation.stale ? '原文已变化，以下是此前保存的引用' : '引用原文'}：${state.citation.quote}`;
   $('page-controls').hidden = !pdf || !state.doc.page_count;
   $('page-select').value = state.page;
   $('page-prev').disabled = state.page <= 1;
@@ -91,11 +101,18 @@ function renderReader() {
   }
   $('page-note').textContent = pdf ? `使用 PDF 文件页序号，与纸面印刷页码可能不同。${unit?.note ? ' ' + unit.note : ''}` : '按正文段落和表格单元格定位；DOCX 不提供固定页码。排版请下载原件查看。';
   if (pdf) {
-    $('text-view').innerHTML = `<pre>${escapeHTML(unit?.text || '暂无可用文字。请查看原件或重新解析。')}</pre>`;
+    $('text-view').innerHTML = `<pre>${sourceMarkup(unit)}</pre>`;
   } else {
-    $('text-view').innerHTML = state.units.length ? state.units.map(u => `<section class="source-block"><small>${escapeHTML(u.locator)}</small><p>${escapeHTML(u.text)}</p></section>`).join('') : '<p>暂无可用文字，请下载原件核对。</p>';
+    $('text-view').innerHTML = state.units.length ? state.units.map(u => `<section class="source-block" data-unit="${escapeHTML(u.id)}"><small>${escapeHTML(u.locator)}</small><p>${sourceMarkup(u)}</p></section>`).join('') : '<p>暂无可用文字，请下载原件核对。</p>';
   }
   $('source-method').textContent = unit?.method === 'ocr' ? '本机 OCR · 请核对原页' : pdf ? '原文文字层 · 本机解析' : '正文与表格 · 本机解析';
+}
+function sourceMarkup(unit) {
+  if (!unit) return '暂无可用文字。请查看原件或重新解析。';
+  const citation = state.citation;
+  const index = citation?.unit_id === unit.id && !citation.stale ? unit.text.indexOf(citation.quote) : -1;
+  if (index < 0) return escapeHTML(unit.text);
+  return escapeHTML(unit.text.slice(0,index)) + '<mark>' + escapeHTML(citation.quote) + '</mark>' + escapeHTML(unit.text.slice(index + citation.quote.length));
 }
 function setPage(page) { state.page = page; renderReader(); $('page-view').scrollTop = 0; $('text-view').scrollTop = 0; }
 
@@ -118,6 +135,7 @@ async function runBatch(items, operation) {
       await refreshDocuments();
     }
     await refreshMatters();
+    await refreshFacts();
     notice(`已保存 ${completed} 份材料${duplicate ? `；${duplicate} 份重复文件已跳过` : ''}。${problems.length ? '\n' + problems.join('\n') : ' 可以开始查看原文。'}`, !problems.length);
     if (state.documents.length) await selectDocument(state.doc?.id || state.documents[0].id);
   } finally { busy(false); $('progress-panel').hidden = true; $('file-input').value = ''; }
@@ -171,9 +189,11 @@ $('page-select').addEventListener('change', e => setPage(Number(e.target.value))
 $('reparse').addEventListener('click', async () => {
   if (state.busy || !state.doc) return;
   const docId = state.doc.id; const url = docUrl('/parse'); busy(true); toast('正在重新解析，请稍候。');
-  try { await post(url, {ocr: $('use-ocr').checked}); await refreshDocuments(); await selectDocument(docId); await refreshMatters(); toast('解析结果已更新。'); }
+  try { await post(url, {ocr: $('use-ocr').checked}); await refreshDocuments(); await selectDocument(docId); await refreshMatters(); await refreshFacts(); toast('解析结果已更新。'); }
   catch (e) { toast(e.message); } finally { busy(false); }
 });
 $('page-image').addEventListener('error', () => { $('page-note').textContent = '页面预览未成功加载，请重试或下载原件查看。'; });
 window.addEventListener('beforeunload', e => { if (state.busy) { e.preventDefault(); e.returnValue = ''; } });
-(async () => { await refreshMatters(); const previous = localStorage.getItem('matterloom-last-matter'); const id = state.matters.find(m => m.id === previous)?.id || state.matters[0]?.id; if (id) await selectMatter(id); })().catch(e => toast(e.message));
+document.addEventListener('DOMContentLoaded', () => {
+  (async () => { await refreshMatters(); const previous = localStorage.getItem('matterloom-last-matter'); const id = state.matters.find(m => m.id === previous)?.id || state.matters[0]?.id; if (id) await selectMatter(id); })().catch(e => toast(e.message));
+});

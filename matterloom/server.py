@@ -14,11 +14,13 @@ from urllib.parse import quote, urlsplit
 
 from .parsing import ocr_available, render_page
 from .store import MAX_FILE_BYTES, Store
+from .review import ConflictError, Review
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def make_handler(store):
+    review = Review(store)
     class Handler(BaseHTTPRequestHandler):
         def reply(self, status, data, kind="application/json; charset=utf-8", filename=None):
             payload = json.dumps(data, ensure_ascii=False).encode() if kind.startswith("application/json") else data
@@ -56,7 +58,7 @@ def make_handler(store):
             if method == "POST" and self.headers.get("X-MatterLoom") != "1":
                 return self.reply(403, {"error": "请求校验失败。"})
             path = urlsplit(self.path).path
-            if method == "GET" and path in {"/", "/app.js", "/style.css", "/mark.svg"}:
+            if method == "GET" and path in {"/", "/app.js", "/review.js", "/style.css", "/mark.svg"}:
                 asset = ROOT / "web" / ("index.html" if path == "/" else path[1:])
                 return self.reply(200, asset.read_bytes(), mimetypes.guess_type(str(asset))[0] or "text/plain")
             if method == "GET" and path == "/api/matters":
@@ -88,7 +90,19 @@ def make_handler(store):
                     raise LookupError("模拟文件不存在。")
                 sample = ROOT / "samples" / case["key"] / item["name"]
                 return self.reply(200, store.ingest(matter["id"], item["name"], sample.read_bytes(), data.get("ocr", True) is True))
-            match = re.fullmatch(r"/api/matters/([a-f0-9]{32})/documents(?:/([a-f0-9]{32})(?:/(units|original|parse|pages/[0-9]+))?)?", path)
+            fact_match = re.fullmatch(r"/api/matters/([a-f0-9]{32})/facts(?:/([a-f0-9]{32})(?:/(history))?)?", path)
+            if fact_match:
+                matter_id, fact_id, action = fact_match.groups()
+                if not fact_id:
+                    if method == "GET":
+                        return self.reply(200, review.facts(matter_id))
+                    return self.reply(201, review.add(matter_id, self.json_body()))
+                if action == "history" and method == "GET":
+                    return self.reply(200, {"history": review.history(matter_id, fact_id)})
+                if not action and method == "POST":
+                    return self.reply(200, {"fact": review.edit(matter_id, fact_id, self.json_body())})
+                raise LookupError("页面不存在。")
+            match = re.fullmatch(r"/api/matters/([a-f0-9]{32})/documents(?:/([a-f0-9]{32})(?:/(units|original|parse|extract|pages/[0-9]+))?)?", path)
             if not match:
                 raise LookupError("页面不存在。")
             matter_id, doc_id, action = match.groups()
@@ -121,6 +135,9 @@ def make_handler(store):
                 return self.reply(200, render_page(store.original(document), int(action.split("/")[1])), "image/png")
             if method == "POST" and action == "parse":
                 return self.reply(200, store.reparse(matter_id, doc_id, self.json_body().get("ocr", True) is True))
+            if method == "POST" and action == "extract":
+                data = self.json_body()
+                return self.reply(200, review.extract(matter_id, doc_id, data.get("mode", "local"), data.get("allow_external", False)))
             raise LookupError("页面不存在。")
 
         def handle_request(self, method):
@@ -128,6 +145,8 @@ def make_handler(store):
                 self.dispatch(method)
             except LookupError as exc:
                 self.reply(404, {"error": str(exc)})
+            except ConflictError as exc:
+                self.reply(409, {"error": str(exc)})
             except (ValueError, json.JSONDecodeError) as exc:
                 self.reply(400, {"error": str(exc)})
             except (BrokenPipeError, ConnectionResetError):

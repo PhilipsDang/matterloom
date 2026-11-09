@@ -5,6 +5,7 @@
   <title>MatterLoom 律脉 · 事项材料</title>
   <link rel="icon" type="image/svg+xml" href="/mark.svg"><link rel="stylesheet" href="/style.css">
   <script src="/app.js" defer></script>
+  <script src="/review.js" defer></script>
 </head>
 <body>
   <aside class="sidebar">
@@ -13,10 +14,10 @@
     <button class="primary new-matter" id="new-matter">＋ 新建事项</button>
     <div class="section-label">我的事项 <span id="matter-count">0</span></div>
     <nav id="matter-list" aria-label="事项列表"></nav>
-    <div class="sidebar-bottom"><span class="local-dot"></span> 本机工作空间 <span class="version">0.1</span><p>材料与解析内容保存在本机。</p><button class="subtle" id="samples-button">查看模拟案卷 <span>↗</span></button></div>
+    <div class="sidebar-bottom"><span class="local-dot"></span> 本机工作空间 <span class="version">0.2</span><p>默认本机处理，模型提取需主动开启。</p><button class="subtle" id="samples-button">查看模拟案卷 <span>↗</span></button></div>
   </aside>
   <main>
-    <header class="topbar"><span>个人知识库 <b>/</b> <span id="breadcrumb">事项材料</span></span><span class="phase">第一阶段 · 材料整理</span></header>
+    <header class="topbar"><span>个人知识库 <b>/</b> <span id="breadcrumb">事项材料</span></span><span class="phase">第二阶段 · 事实审核</span></header>
     <section class="page-heading"><div><p class="eyebrow">MATTER WORKSPACE</p><h1 id="matter-title">从一份材料，开始理清脉络。</h1><p id="matter-description">创建事项，汇集文件，让每一处原文都有迹可循。</p></div><span class="outline-label">本地原型</span></section>
     <section id="welcome" class="welcome">
       <div class="welcome-art" aria-hidden="true"><span></span><span></span><span></span><i></i></div>
@@ -27,15 +28,31 @@
     </section>
     <section id="workspace" hidden>
       <div class="metrics"><div><span>事项材料</span><strong id="stat-docs">0<small>份</small></strong></div><div><span>已解析完成</span><strong id="stat-ready">0<small>份</small></strong></div><div><span>需要留意</span><strong id="stat-review">0<small>份</small></strong></div><div><span>PDF 原文页数</span><strong id="stat-pages">0<small>页</small></strong></div></div>
-      <div class="workspace-toolbar"><div class="active-tab">事项材料 <span id="tab-count">0</span></div><label class="ocr-switch"><input type="checkbox" id="use-ocr" checked> 识别扫描件 <span id="ocr-status"></span></label></div>
+      <div class="workspace-toolbar"><div class="workspace-tabs"><button class="active-tab" id="materials-tab" aria-pressed="true">事项材料 <span id="tab-count">0</span></button><button id="facts-tab" aria-pressed="false">事实审核 <span id="facts-count">0</span></button></div><label class="ocr-switch"><input type="checkbox" id="use-ocr" checked> 识别扫描件 <span id="ocr-status"></span></label></div>
+      <section id="extraction-toolbar" class="extraction-toolbar" hidden>
+        <div><p class="eyebrow">FROM SOURCE TO FACT</p><h2>把信息理清，把依据留下。</h2><p>先提取候选，再逐条核对。确认表示你已审核这条记录；主张仍需保留其归属。</p></div>
+        <div class="extraction-controls"><label>提取方式<select id="extraction-mode"><option value="local">本地规则 · 无需 API</option value="glm">GLM 模型 · 需配置</option></select></label><button class="primary" id="extract-all">提取事项信息</button></div>
+        <p id="mode-description" class="mode-description">本地模式识别明确的名称、日期、金额与语句线索，可能遗漏或误分类，均需人工审核。</p>
+        <label id="external-consent-label" class="external-consent" hidden><input id="external-consent" type="checkbox"> 我允许将本事项各文件的解析文字发送给智谱 GLM 进行提取，并承担 API 费用。</label>
+        <p id="extraction-progress" role="status" hidden></p>
+      </section>
       <div class="upload-zone" id="upload-zone"><input type="file" id="file-input" accept=".pdf,.docx" multiple hidden><div class="upload-symbol">↑</div><div><strong>拖入文件，或 <button id="choose-files" class="inline-button">选择文件</button></strong><p>PDF / DOCX · 每份不超过 20 MB · PDF 最多 100 页</p></div><span class="upload-end">支持多份文件</span></div>
       <div id="progress-panel" class="progress-panel" hidden><div><span id="progress-message"></span><span id="progress-count"></span></div><progress id="upload-progress" max="1" value="0"></progress></div>
       <div id="notice" class="notice" role="status" hidden></div>
-      <div class="document-layout">
+      <div class="document-layout" id="document-layout">
+        <section id="facts-panel" class="facts-panel" hidden>
+          <div class="panel-heading"><h2>待审核信息</h2><button class="small-button" id="add-fact">＋ 手动补充</button></div>
+          <p id="review-summary" class="review-summary"></p>
+          <div class="fact-filters"><label>类型<select id="fact-kind"><option value="">全部类型</option><option value="person">人物</option><option value="organization">机构</option><option value="amount">金额</option><option value="date">日期</option><option value="event">事件</option><option value="claim">主张</option><option value="question">待确认问题</option></select></label><label>状态<select id="fact-status"><option value="active">未删除</option><option value="pending">待审核</option><option value="confirmed">已确认</option><option value="uncertain">不确定</option><option value="stale">原文变化</option><option value="excluded">已删除</option><option value="all">全部</option></select></label></div>
+          <label class="fact-search">搜索信息<input id="fact-search" placeholder="名称、金额、原文或文件名"></label>
+          <div id="fact-list" aria-live="polite"></div>
+          <details class="run-history"><summary>提取记录与覆盖范围</summary><div id="run-list"></div></details>
+        </section>
         <section class="file-panel"><div class="panel-heading"><h2>文件目录</h2><span id="file-count"></span></div><div class="search-wrap"><span>⌕</span><input id="file-search" placeholder="按文件名查找" aria-label="按文件名查找"></div><div id="file-list"></div><p class="list-footnote">选择文件，查看原文与提取结果。</p></section>
         <section class="reader-panel" aria-label="原文与解析内容"><div id="reader-empty" class="reader-empty"><div class="empty-icon">▤</div><h3>原文，是每一次查证的起点。</h3><p>上传或选择一份材料，在这里开始核对。</p></div><div id="reader" hidden>
           <div class="reader-heading"><div><span id="reader-kind" class="eyebrow"></span><h2 id="reader-title"></h2></div><a id="download-original" class="small-button">下载原件 ↓</a></div>
           <div id="reader-warning" class="reader-warning" hidden></div>
+          <div id="active-citation" class="active-citation" hidden></div>
           <div class="reader-toolbar"><div class="segmented"><button id="view-original" class="selected">原文</button><button id="view-text">提取文字</button></div><div id="page-controls" class="page-controls"><button id="page-prev" aria-label="上一页">‹</button><select id="page-select" aria-label="文件页码"></select><span id="page-total"></span><button id="page-next" aria-label="下一页">›</button></div></div>
           <div id="page-note" class="page-note"></div><div id="page-view" class="page-view"><img id="page-image" alt="PDF 原文页面"></div><div id="text-view" class="text-view" hidden></div>
           <div class="reader-footer"><span id="source-method"></span><button class="text-button" id="reparse">重新解析 ↻</button></div>
@@ -46,5 +63,13 @@
   </main>
   <dialog id="matter-dialog"><form id="matter-form"><p class="eyebrow">NEW MATTER</p><h2>新建事项</h2><p class="dialog-intro">将同一事项的材料集中保存，方便后续查证。</p><label>事项名称<input name="name" required maxlength="100" placeholder="例如：设备买卖款项核对" autofocus></label><label>事项说明 <span class="muted">选填</span><textarea name="description" maxlength="1000" rows="3" placeholder="简要记录事项背景"></textarea></label><p id="form-error" class="error" role="alert"></p><div class="dialog-actions"><button type="button" id="cancel-matter" class="small-button">取消</button><button type="submit" class="primary">创建事项</button></div></form></dialog>
   <dialog id="samples-dialog"><p class="eyebrow">SAMPLE COLLECTION</p><h2>用模拟案卷，走完第一步。</h2><p class="dialog-intro">两组事项 · 16 份材料 · 全部为虚构测试内容。</p><div id="sample-cards"></div><div class="dialog-actions"><button class="small-button" id="close-samples">关闭</button></div></dialog>
+  <dialog id="fact-dialog"><form id="fact-form"><p class="eyebrow">FACT REVIEW</p><h2 id="fact-dialog-title">审核信息</h2><p class="dialog-intro">结合原文核对信息归属、否定与争议。原始提取结果和修改记录会保留。</p>
+    <label>类型<select id="edit-kind" required></select></label><label>标题<input id="edit-label" required maxlength="120"></label><label>信息内容<textarea id="edit-value" required maxlength="1600" rows="4"></textarea></label><label>规范值 <span class="muted">选填，未知留空</span><input id="edit-normalized" maxlength="120" placeholder="例如 2026-10-20 或 CNY 100000"></label><label>不确定处<textarea id="edit-uncertainty" maxlength="800" rows="2"></textarea></label>
+    <div id="manual-evidence" hidden><label>原文位置<select id="manual-unit"></select></label><label>引用原文 <span class="muted">逐字复制连续文字，最多 1600 字</span><textarea id="manual-quote" maxlength="1600" rows="4"></textarea></label></div>
+    <div id="edit-evidence" class="edit-evidence"></div>
+    <div id="review-fields"><label>审核状态<select id="edit-status"><option value="pending">待审核</option><option value="confirmed">已确认</option><option value="uncertain">不确定</option><option value="excluded">已删除（保留记录，可恢复）</option></select></label><label>审核备注<textarea id="edit-note" maxlength="1600" rows="2" placeholder="记录修改依据或需要跟进的问题"></textarea></label></div>
+    <details id="original-details"><summary>首次提取内容</summary><pre id="original-fact"></pre></details>
+    <p id="fact-error" class="error" role="alert"></p><div class="dialog-actions"><button type="button" id="cancel-fact" class="small-button">取消</button><button type="submit" id="save-fact" class="primary">保存</button></div></form></dialog>
+  <dialog id="history-dialog"><p class="eyebrow">REVIEW HISTORY</p><h2>修改记录</h2><div id="fact-history"></div><div class="dialog-actions"><button id="close-history" class="small-button">关闭</button></div></dialog>
   <div id="toast" class="toast" role="status" hidden></div>
 </body></html>

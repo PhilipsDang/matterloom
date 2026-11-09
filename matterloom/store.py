@@ -42,6 +42,8 @@ class Store:
                     text TEXT NOT NULL, method TEXT NOT NULL, status TEXT NOT NULL, note TEXT NOT NULL,
                     ocr_lines TEXT NOT NULL DEFAULT '[]', UNIQUE(document_id, sequence));
             """)
+            from .review import init_schema
+            init_schema(db)
 
     @contextmanager
     def db(self):
@@ -152,16 +154,21 @@ class Store:
                         unit["text"], unit["method"], unit["status"], unit["note"], json.dumps(unit["ocr_lines"], ensure_ascii=False)))
                 db.execute("""UPDATE documents SET status=?,page_count=?,parser=?,warnings=?,parsed_at=?,error=NULL
                     WHERE id=?""", (result["status"], result["page_count"], result["parser"], json.dumps(result["warnings"], ensure_ascii=False), now(), document_id))
+                from .review import invalidate_sources
+                invalidate_sources(db, matter_id, document_id)
         except Exception as exc:
             message = str(exc) if isinstance(exc, ValueError) else "无法解析这份文件。请确认文件未损坏，且后缀与实际格式一致。"
             with self.db() as db:
                 db.execute("DELETE FROM units WHERE document_id=?", (document_id,))
                 db.execute("UPDATE documents SET status='failed',error=?,page_count=NULL,warnings='[]',parsed_at=? WHERE id=?", (message, now(), document_id))
+                from .review import invalidate_sources
+                invalidate_sources(db, matter_id, document_id)
         return self.document(matter_id, document_id)
 
     def recover_interrupted(self):
         with self.db() as db:
             db.execute("UPDATE documents SET status='pending',error='上次解析被中断，请重新解析。' WHERE status='parsing'")
+            db.execute("UPDATE extraction_runs SET status='failed',finished_at=?,error='上次提取被中断，请重新提取；已有审核记录保留。' WHERE status='running'", (now(),))
 
     def units(self, matter_id, document_id):
         self.document(matter_id, document_id)
